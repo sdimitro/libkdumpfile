@@ -61,3 +61,5 @@ To make a new public release:
 5. Create a signed tag using `git tag -s`
 6. Upload the tarballs to GitHub and create a new release
 7. Write an announcement
+
+SERAPHEIM: THIS IS A TEST!
