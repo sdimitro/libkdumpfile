@@ -1,0 +1,86 @@
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron:  '0 0 * * *'
+
+jobs:
+  #
+  # Ensure the debian package can be built and installed
+  # without any errors. Note that we require python3 to
+  # be installed.
+  #
+  deb-build-and-test-run:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: '3.6'
+      #
+      # Needed for all the debian file related utilities.
+      #
+      - run: sudo apt-get install -y debhelper devscripts equivs
+      #
+      # Build depepndencies non-interactively.
+      #
+      - run: sudo mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes' debian/control
+      #
+      # Perform build and generate package.
+      #
+      - run: dpkg-buildpackage -b -us -uc
+      #
+      # Install the package.
+      #
+      # Note:
+      # [1] We use the asterisk so the ddeb dbgsym package is also
+      #     installed.
+      # [2] One a stock machine we don't actually need --no-remove
+      #     but it doesn't hurt to put it here just in case someone
+      #     copies this command in a delphix appliance.
+      #
+      - run: sudo apt-get install --no-remove -y ../libkdumpfile_*deb
+      #
+      # Ensure the package is installed and works as expected.
+      # To do so we download a kdump-compressed crash dump
+      # that we've already archived on S3 and run one of
+      # the example libkdumpfile utilities on it, verifying
+      # that it works as expected.
+      #
+      - run: whereis libkdumpfile
+      - run: python3 -m pip install aws
+      - run: /usr/local/bin/aws s3 cp --no-sign-request s3://sdb-regression-dumps/dump-201912060006.tar.lzma .
+      - run: tar -x --lzma -f dump-201912060006.tar.lzma
+      - run: dumpattr dump-data/dump.201912060006 arch.page_size
+  #
+  # Ensure that the developer build works as expected
+  # under multiple python versions.
+  #
+  dev-build-and-test-run:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python3 --version
+      - run: sudo apt-get install -y debhelper devscripts equivs
+      - run: sudo mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes' debian/control
+      - run: sudo apt-get install -y python3.6-dev python3.7-dev python3.8-dev
+      - run: autoreconf -fi
+      - run: ./configure --with-python=$(which python3)
+      - run: make
+      - run: sudo make install
+      #
+      # At this point we'd probably want to run the following
+      # two commands to run the test-suite of libkdumpfile.
+      # Unforunately there is two issues with it that are
+      # blocking us from doing this successfully:
+      # https://github.com/ptesarik/libkdumpfile/issues/30
+      # https://github.com/ptesarik/libkdumpfile/issues/31
+      #
+      # - run: make check
+      # - run: make distcheck
