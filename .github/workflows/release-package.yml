@@ -33,19 +33,25 @@ jobs:
         run: ls -lh ..
       - name: Detect binary package name
         run: |
-          echo "::set-env name=DEBIAN_PACKAGE_PATH::$(ls ../libkdumpfile_*deb)"
-          echo "::set-env name=DEBIAN_PACKAGE_NAME::$(basename $DEBIAN_PACKAGE_PATH)"
+          path=$(ls ../libkdumpfile_*deb)
+          echo "::set-env name=DEBIAN_PACKAGE_PATH::$path"
+          echo "::set-env name=DEBIAN_PACKAGE_NAME::$(basename $path)"
       - name: Detect debug package name
         run: |
-          echo "::set-env name=DDEBIAN_PACKAGE_PATH::$(ls ../libkdumpfile-dbgsym_*ddeb)"
-          echo "::set-env name=DDEBIAN_PACKAGE_NAME::$(basename $DDEBIAN_PACKAGE_PATH)"
+          path=$(ls ../libkdumpfile-dbgsym_*ddeb)
+          echo "::set-env name=DDEBIAN_PACKAGE_PATH::$path"
+          echo "::set-env name=DDEBIAN_PACKAGE_NAME::$(basename $path)"
       - name: Print package names
-        run: echo $DEBIAN_PACKAGE_NAME $DDEBIAN_PACKAGE_NAME
+        run: |
+          echo $DEBIAN_PACKAGE_PATH $DDEBIAN_PACKAGE_PATH
+          echo ${{ env.DEBIAN_PACKAGE_PATH }} ${{ env.DDEBIAN_PACKAGE_PATH }}
+          echo $DEBIAN_PACKAGE_NAME $DDEBIAN_PACKAGE_NAME
+          echo ${{ env.DEBIAN_PACKAGE_NAME }} ${{ env.DDEBIAN_PACKAGE_NAME }}
       - name: Create release
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN:${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
@@ -68,8 +74,8 @@ jobs:
           # https://www.iana.org/assignments/media-types/media-types.xhtml
           #
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: $DEBIAN_PACKAGE_PATH
-          asset_name: $DEBIAN_PACKAGE_NAME
+          asset_path: ${{ env.DEBIAN_PACKAGE_PATH }}
+          asset_name: ${{ env.DEBIAN_PACKAGE_NAME }}
           asset_content_type: application/vnd.debian.binary-package
       - name: Upload debian debug package
         id: upload-release-asset-2
@@ -81,6 +87,6 @@ jobs:
           # See comment of similar code above.
           #
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: $DDEBIAN_PACKAGE_PATH
-          asset_name: $DDEBIAN_PACKAGE_NAME
+          asset_path: ${{ env.DDEBIAN_PACKAGE_PATH }}
+          asset_name: ${{ env.DDEBIAN_PACKAGE_NAME }}
           asset_content_type: application/vnd.debian.binary-package
