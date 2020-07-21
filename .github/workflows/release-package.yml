@@ -45,7 +45,7 @@ jobs:
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN:${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
@@ -68,8 +68,8 @@ jobs:
           # https://www.iana.org/assignments/media-types/media-types.xhtml
           #
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: $DEBIAN_PACKAGE_PATH
-          asset_name: $DEBIAN_PACKAGE_NAME
+          asset_path: ${{ env.DEBIAN_PACKAGE_PATH }}
+          asset_name: ${{ env.DEBIAN_PACKAGE_NAME }}
           asset_content_type: application/vnd.debian.binary-package
       - name: Upload debian debug package
         id: upload-release-asset-2
@@ -81,6 +81,6 @@ jobs:
           # See comment of similar code above.
           #
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: $DDEBIAN_PACKAGE_PATH
-          asset_name: $DDEBIAN_PACKAGE_NAME
+          asset_path: ${{ env.DDEBIAN_PACKAGE_PATH }}
+          asset_name: ${{ env.DDEBIAN_PACKAGE_NAME }}
           asset_content_type: application/vnd.debian.binary-package
