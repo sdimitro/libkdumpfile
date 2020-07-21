@@ -39,7 +39,7 @@ jobs:
       #     but it doesn't hurt to put it here just in case someone
       #     copies this command in a delphix appliance.
       #
-      - run: sudo apt-get install --no-remove -y ../libkdumpfile_*deb
+      - run: sudo apt-get install --no-remove -y ../libkdumpfile*deb
       #
       # Ensure the package is installed and works as expected.
       # To do so we download a kdump-compressed crash dump
