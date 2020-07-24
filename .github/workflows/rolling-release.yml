@@ -1,0 +1,74 @@
+name: Rolling Release Workflow
+
+on:
+  push:
+    branches: [master, 6.0/stage]
+
+jobs:
+  deb-build-test-release:
+    name: Debian Package Build->Test->Release
+    #
+    # In an attempt to ensure no surprises down the line we
+    # attempt to run everything in the latest version of
+    # Ubuntu that Github provides.
+    #
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.6'
+      - name: Install dependencies
+        run: ./.github/scripts/install-deps.sh
+      - name: Perform build and generate package
+        run: ./.github/scripts/build-pkg.sh
+      - name: Install package
+        run: ./.github/scripts/install-pkg.sh
+      - name: Run external testing
+        run: ./.github/scripts/run-external-testing.sh
+      - name: Print generated artifacts
+        run: ls -lh ..
+      - name: Normalize binary package name and path
+        run: mv $(ls ../libkdumpfile_*deb) libkdumpfile_latest.deb
+      - name: Normalize debug package name and path
+        run: mv $(ls ../libkdumpfile-dbgsym_*ddeb) libkdumpfile-dbgsym_latest.ddeb
+      - name: Delete previous rolling release and recreate its associated tag
+        run: |
+          curl -fsSL https://github.com/github/hub/raw/master/script/get | bash -s 2.14.1
+          bin/hub release delete latest_rolling || echo " release 'latest_rolling' doesn't exist..."
+          bin/hub api -X DELETE repos/${{ github.repository }}/git/refs/tags/latest_rolling || echo " tag 'latest_rolling' doesn't exist"
+          echo ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: latest_rolling
+          release_name: Latest Rolling Release
+          draft: false
+          prerelease: false
+      - name: Upload debian package
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./libkdumpfile_latest.deb
+          asset_name: libkdumpfile_latest.deb
+          asset_content_type: application/vnd.debian.binary-package
+      - name: Upload debian debug package
+        id: upload-release-asset-2
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./libkdumpfile-dbgsym_latest.ddeb
+          asset_name: libkdumpfile-dbgsym_latest.ddeb
+          asset_content_type: application/vnd.debian.binary-package
