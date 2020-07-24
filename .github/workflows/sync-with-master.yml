@@ -1,3 +1,5 @@
+name: Sync Latest Staging With Master
+
 on:
   push:
     branches:

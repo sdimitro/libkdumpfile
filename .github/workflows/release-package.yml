@@ -1,3 +1,5 @@
+name: Versioned Release Workflows
+
 on:
   push:
     #
@@ -8,13 +10,8 @@ on:
     - 'release/*'
 
 jobs:
-  #
-  # Build and release debian package on Github.
-  # Note that we require Python 3 to be installed
-  # for the Python bindings to be compiled in the
-  # package.
-  #
   deb-build-test-release:
+    name: Debian Package Build->Test->Release
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout code
@@ -23,12 +20,14 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: '3.6'
-      - name: Install debian utilities
-        run: sudo apt-get install -y debhelper devscripts equivs
-      - name: Build dependencies non-interactively
-        run: sudo mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes' debian/control
-      - name: Build and generate package
-        run: dpkg-buildpackage -b -us -uc
+      - name: Install dependencies
+        run: ./.github/scripts/install-deps.sh
+      - name: Perform build and generate package
+        run: ./.github/scripts/build-pkg.sh
+      - name: Install package
+        run: ./.github/scripts/install-pkg.sh
+      - name: Run external testing
+        run: ./.github/scripts/run-external-testing.sh
       - name: Print generated artifacts
         run: ls -lh ..
       - name: Detect binary package name

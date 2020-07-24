@@ -1,3 +1,5 @@
+Name: Generic Workflows
+
 on:
   push:
   pull_request:
@@ -5,75 +7,66 @@ on:
     - cron:  '0 0 * * *'
 
 jobs:
-  #
-  # Ensure the debian package can be built and installed
-  # without any errors. Note that we require python3 to
-  # be installed.
-  #
   deb-build-and-test-run:
+    name: Debian Package Build and Testing
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
+        #
+        # Note that we require Python 3 so libkdumpfile
+        # is built with its Python bindings.
+        #
         with:
           python-version: '3.6'
-      #
-      # Needed for all the debian file related utilities.
-      #
-      - run: sudo apt-get install -y debhelper devscripts equivs
-      #
-      # Build depepndencies non-interactively.
-      #
-      - run: sudo mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes' debian/control
-      #
-      # Perform build and generate package.
-      #
-      - run: dpkg-buildpackage -b -us -uc
-      #
-      # Install the package.
-      #
-      # Note:
-      # [1] We use the asterisk so the ddeb dbgsym package is also
-      #     installed.
-      # [2] One a stock machine we don't actually need --no-remove
-      #     but it doesn't hurt to put it here just in case someone
-      #     copies this command in a delphix appliance.
-      #
-      - run: sudo apt-get install --no-remove -y ../libkdumpfile*deb
-      #
-      # Ensure the package is installed and works as expected.
-      # To do so we download a kdump-compressed crash dump
-      # that we've already archived on S3 and run one of
-      # the example libkdumpfile utilities on it, verifying
-      # that it works as expected.
-      #
-      - run: whereis libkdumpfile
-      - run: python3 -m pip install aws
-      - run: /usr/local/bin/aws s3 cp --no-sign-request s3://sdb-regression-dumps/dump-201912060006.tar.lzma .
-      - run: tar -x --lzma -f dump-201912060006.tar.lzma
-      - run: dumpattr dump-data/dump.201912060006 arch.page_size
+      - name: Install dependencies
+        run: ./.github/scripts/install-deps.sh
+      - name: Perform build and generate package
+        run: ./.github/scripts/build-pkg.sh
+      - name: Install package
+        run: ./.github/scripts/install-pkg.sh
+      - name: Run external testing
+        run: ./.github/scripts/run-external-testing.sh
+
   #
   # Ensure that the developer build works as expected
   # under multiple python versions.
   #
   dev-build-and-test-run:
-    runs-on: ubuntu-18.04
+    name: Developer Build and Testing 
+    #
+    # Unlike the debian package build job, we prefer
+    # ubuntu-latest for developer builds as they are
+    # more likely to upgrade first.
+    #
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
+        #
+        # Similarly to deb-build-and-test-run job
+        # but we test with multiple versions of
+        # Python as these tend to vary in developer
+        # boxes.
+        #
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python3 --version
-      - run: sudo apt-get install -y debhelper devscripts equivs
-      - run: sudo mk-build-deps --install --tool='apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes' debian/control
-      - run: sudo apt-get install -y python3.6-dev python3.7-dev python3.8-dev
-      - run: autoreconf -fi
-      - run: ./configure --with-python=$(which python3)
-      - run: make
-      - run: sudo make install
+      - name: (Debug) Print Python Version
+        run: python3 --version
+      - name: Install the correct Python developer files
+        run: sudo apt-get install -y python${{ matrix.python-version }}-dev
+      - name: Install dependencies
+        run: ./.github/scripts/install-deps.sh
+      - name: Perform Developer Build
+        run: |
+          autoreconf -fi
+          ./configure --with-python=$(which python3)
+          make
+      - name: Developer Install
+        run: sudo make install
       #
       # At this point we'd probably want to run the following
       # two commands to run the test-suite of libkdumpfile.
@@ -84,3 +77,17 @@ jobs:
       #
       # - run: make check
       # - run: make distcheck
+
+  check-shfmt:
+    name: Shell Script Lint Check - shfmt
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: delphix/actions/shfmt@master
+
+  check-shellcheck:
+    name: Shell Script Lint Check - shellcheck
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: delphix/actions/shellcheck@master
