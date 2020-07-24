@@ -1,4 +1,4 @@
-name: Versioned Release Workflows
+name: Versioned Release Workflow
 
 on:
   push:

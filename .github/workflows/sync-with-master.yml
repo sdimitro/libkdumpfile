@@ -1,4 +1,4 @@
-name: Sync Latest Staging With Master
+name: Sync Latest Staging Workflow
 
 on:
   push:
