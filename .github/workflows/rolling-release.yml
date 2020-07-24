@@ -1,0 +1,96 @@
+name: Rolling Release Workflow
+
+on:
+  push:
+    branches: [master, 6.0/stage, 6.0/release]
+
+jobs:
+  deb-build-test-release:
+    name: Debian Package Build->Test->Release
+    #
+    # In an attempt to ensure no surprises down the line we
+    # attempt to run everything in the latest version of
+    # Ubuntu that Github provides.
+    #
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.6'
+      - name: Detect Branch & Set Environmet Variables
+        run: |
+          echo "Working with: ${{ github.ref }}"
+          #
+          # Normalized names are mapped like the following examples:
+          #   "refs/head/master" -> "master"
+          #   "refs/head/6.0/stage" -> "6-0_release"
+          #
+          norm_branch_name=$(echo "${{ github.ref }}" | cut -d / -f 3- | tr /. _- )
+          echo "::set-env name=NORM_BRANCH_NAME::$norm_branch_name"
+          deb_file=libkdumpfile_${norm_branch_name}.deb
+          echo "::set-env name=DEBIAN_FILE::$deb_file"
+          ddeb_file=libkdumpfile-dbgsym_${norm_branch_name}.ddeb
+          echo "::set-env name=DEBUG_DEBIAN_FILE::$ddeb_file"
+          rolling_tag=rolling_${norm_branch_name}
+          echo "::set-env name=ROLLING_TAG::$rolling_tag"
+      - name: Install dependencies
+        run: ./.github/scripts/install-deps.sh
+      - name: Perform build and generate package
+        run: ./.github/scripts/build-pkg.sh
+      - name: Install package
+        run: ./.github/scripts/install-pkg.sh
+      - name: Run external testing
+        run: ./.github/scripts/run-external-testing.sh
+      - name: Print generated artifacts
+        run: ls -lh ..
+      - name: Normalize binary package name and path
+        run: mv $(ls ../libkdumpfile_*deb) ${{ env.DEBIAN_FILE }}
+      - name: Normalize debug package name and path
+        run: mv $(ls ../libkdumpfile-dbgsym_*ddeb) ${{ env.DEBUG_DEBIAN_FILE }}
+      - name: Delete previous rolling release and recreate its associated tag
+        #
+        # Github releases always need a corresponding tag attached to them.
+        # Creating a tag for every push to these branches will pollute our
+        # release tags. This is why we always recycle (e.g. delete+recreate)
+        # the same tag for every push. Similarly, we recycle Github releases
+        # as Github won't allow us to create two releases with the same name.
+        #
+        run: |
+          curl -fsSL https://github.com/github/hub/raw/master/script/get | bash -s 2.14.1
+          bin/hub release delete ${{ env.ROLLING_TAG }} || echo " release '${{ env.ROLLING_TAG }}' doesn't exist..."
+          bin/hub api -X DELETE repos/${{ github.repository }}/git/refs/tags/${{ env.ROLLING_TAG }} || echo " tag '${{ env.ROLLING_TAG }}' doesn't exist"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.ROLLING_TAG }}
+          release_name: Latest ${{ env.NORM_BRANCH_NAME }}
+          draft: false
+          prerelease: false
+      - name: Upload debian package
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ env.DEBIAN_FILE }}
+          asset_name: ${{ env.DEBIAN_FILE }}
+          asset_content_type: application/vnd.debian.binary-package
+      - name: Upload debian debug package
+        id: upload-release-asset-2
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ env.DEBUG_DEBIAN_FILE }}
+          asset_name: ${{ env.DEBUG_DEBIAN_FILE }}
+          asset_content_type: application/vnd.debian.binary-package
