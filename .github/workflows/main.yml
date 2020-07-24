@@ -1,4 +1,4 @@
-name: Generic Workflows
+name: Generic Workflow
 
 on:
   push:
