@@ -1,0 +1,101 @@
+name: Generic Workflow
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron:  '0 0 * * *'
+
+jobs:
+  deb-build-and-test-run:
+    name: Debian Package Build and Testing
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        #
+        # Note that we require Python 3 so libkdumpfile
+        # is built with its Python bindings.
+        #
+        with:
+          python-version: '3.6'
+      - name: Install dependencies
+        run: ./.github/scripts/install-deps.sh
+      - name: Perform build and generate package
+        run: ./.github/scripts/build-pkg.sh
+      - name: Install package
+        run: ./.github/scripts/install-pkg.sh
+      - name: Run external testing
+        run: ./.github/scripts/run-external-testing.sh
+
+  #
+  # Ensure that the developer build works as expected
+  # under multiple python versions.
+  #
+  dev-build-and-test-run:
+    name: Developer Build and Testing 
+    #
+    # Unlike the debian package build job, we prefer
+    # ubuntu-latest for developer builds as they are
+    # more likely to upgrade first.
+    #
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        #
+        # Similarly to deb-build-and-test-run job
+        # but we test with multiple versions of
+        # Python as these tend to vary in developer
+        # boxes.
+        #
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: (Debug) Print Python Version
+        run: python3 --version
+      - name: Install the correct Python developer files
+        run: sudo apt-get install -y python${{ matrix.python-version }}-dev
+      - name: Install dependencies
+        run: ./.github/scripts/install-deps.sh
+      - name: Perform Developer Build
+        run: |
+          autoreconf -fi
+          ./configure --with-python=$(which python3)
+          make
+      - name: Developer Install
+        run: sudo make install
+      #
+      # At this point we'd probably want to run the following
+      # two commands to run the test-suite of libkdumpfile.
+      # Unforunately there is two issues with it that are
+      # blocking us from doing this successfully:
+      # https://github.com/ptesarik/libkdumpfile/issues/30
+      # https://github.com/ptesarik/libkdumpfile/issues/31
+      #
+      # - run: make check
+      # - run: make distcheck
+
+  #
+  # Unfortunately there are shell scripts in libkdumpfile
+  # that do not adhere to shfmt conventions.
+  #
+  # check-shfmt:
+  #   name: Shell Script Lint Check - shfmt
+  #   runs-on: ubuntu-18.04
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: delphix/actions/shfmt@master
+
+  #
+  # Unfortunately there are shell scripts in libkdumpfile
+  # that do not adhere to shfmt conventions.
+  #
+  # check-shellcheck:
+  #   name: Shell Script Lint Check - shellcheck
+  #   runs-on: ubuntu-18.04
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: delphix/actions/shellcheck@master
