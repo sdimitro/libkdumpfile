@@ -1,18 +1,15 @@
-name: Rolling Release Workflow
+name: Debian Release Workflow
 
 on:
   push:
     branches: [master, 6.0/stage, 6.0/release]
+    tags:
+    - 'release/*'
 
 jobs:
   deb-build-test-release:
-    name: Debian Package Build->Test->Release
-    #
-    # In an attempt to ensure no surprises down the line we
-    # attempt to run everything in the latest version of
-    # Ubuntu that Github provides.
-    #
-    runs-on: ubuntu-latest
+    name: Debian Package Build-Test-Release
+    runs-on: ubuntu-18.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -20,22 +17,31 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: '3.6'
-      - name: Detect Branch & Set Environmet Variables
+      - name: Detect Branch & Set Environment Variables
         run: |
           echo "Working with: ${{ github.ref }}"
           #
           # Normalized names are mapped like the following examples:
           #   "refs/head/master" -> "master"
           #   "refs/head/6.0/stage" -> "6-0_stage"
+          #   "refs/head/release/6.0.1.0" -> "release_6-0-1-0"
           #
-          norm_branch_name=$(echo "${{ github.ref }}" | cut -d / -f 3- | tr /. _- )
+          gh_branch_name=$(echo "${{ github.ref }}" | cut -d / -f 3- )
+          echo "::set-env name=GH_BRANCH_NAME::$gh_branch_name"
+          norm_branch_name=$(echo $gh_branch_name | tr /. _- )
           echo "::set-env name=NORM_BRANCH_NAME::$norm_branch_name"
           deb_file=libkdumpfile_${norm_branch_name}.deb
           echo "::set-env name=DEBIAN_FILE::$deb_file"
           ddeb_file=libkdumpfile-dbgsym_${norm_branch_name}.ddeb
           echo "::set-env name=DEBUG_DEBIAN_FILE::$ddeb_file"
-          rolling_tag=rolling_${norm_branch_name}
-          echo "::set-env name=ROLLING_TAG::$rolling_tag"
+          #
+          # We create a separate tag, even for the Delphix release
+          # tags, to avoid touching any of the original references
+          # of our github history. (see later comment about Github
+          # releases needing a corresponding tag to be linked with).
+          #
+          gh_release_tag=github_${norm_branch_name}
+          echo "::set-env name=RELEASE_TAG::$gh_release_tag"
       - name: Install dependencies
         run: ./.github/scripts/install-deps.sh
       - name: Perform build and generate package
@@ -50,7 +56,7 @@ jobs:
         run: mv $(ls ../libkdumpfile_*deb) ${{ env.DEBIAN_FILE }}
       - name: Normalize debug package name and path
         run: mv $(ls ../libkdumpfile-dbgsym_*ddeb) ${{ env.DEBUG_DEBIAN_FILE }}
-      - name: Delete previous rolling release and recreate its associated tag
+      - name: Delete previous release and recreate its associated tag
         #
         # Github releases always need a corresponding tag attached to them.
         # Creating a tag for every push to these branches will pollute our
@@ -60,8 +66,8 @@ jobs:
         #
         run: |
           curl -fsSL https://github.com/github/hub/raw/master/script/get | bash -s 2.14.1
-          bin/hub release delete ${{ env.ROLLING_TAG }} || echo " release '${{ env.ROLLING_TAG }}' doesn't exist..."
-          bin/hub api -X DELETE repos/${{ github.repository }}/git/refs/tags/${{ env.ROLLING_TAG }} || echo " tag '${{ env.ROLLING_TAG }}' doesn't exist"
+          bin/hub release delete ${{ env.RELEASE_TAG }} || echo " release '${{ env.RELEASE_TAG }}' doesn't exist..."
+          bin/hub api -X DELETE repos/${{ github.repository }}/git/refs/tags/${{ env.RELEASE_TAG }} || echo " tag '${{ env.RELEASE_TAG }}' doesn't exist"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create release
@@ -70,8 +76,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.ROLLING_TAG }}
-          release_name: Latest ${{ env.NORM_BRANCH_NAME }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          release_name: Latest ${{ env.GH_BRANCH_NAME }}
           draft: false
           prerelease: false
       - name: Upload debian package
