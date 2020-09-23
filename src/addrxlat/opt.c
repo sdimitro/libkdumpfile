@@ -193,15 +193,16 @@ struct optdesc {
 #define END					\
 	{ { OPT_NUM } }
 
-/** Three-character options. */
+/** Six-character options. */
 static const struct {
 	struct optdesc opt;
-	char name[4];
-} opt3[] = {
-	DEF(pae, bool),
+	char name[7];
+} opt6[] = {
+	DEF(levels, number),
 	END
 };
 
+/** Seven-character options. */
 static const struct {
 	struct optdesc opt;
 	char name[8];
@@ -245,7 +246,7 @@ static const struct {
 	const struct optdesc *opt;
 	size_t elemsz;
 } options[] = {
-	DEFPTR(3),
+	DEFPTR(6),
 	DEFPTR(7),
 	DEFPTR(8),
 	DEFPTR(9),

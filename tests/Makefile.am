@@ -35,29 +35,26 @@ check_HEADERS = \
 	lkcd.h \
 	testutil.h
 
-addrmap_LDADD = $(top_builddir)/src/addrxlat/libaddrxlat.la
-addrxlat_LDADD = $(top_builddir)/src/addrxlat/libaddrxlat.la
-
-attriter_SOURCES = attriter.c
+addrmap_LDADD = \
+	$(top_builddir)/src/addrxlat/libaddrxlat.la
+addrxlat_LDADD = \
+	$(top_builddir)/src/addrxlat/libaddrxlat.la
 attriter_LDADD = \
 	$(LDADD) \
 	$(top_builddir)/src/kdumpfile/libkdumpfile.la
-
-checkattr_SOURCES = checkattr.c
 checkattr_LDADD = \
 	$(LDADD) \
 	$(top_builddir)/src/kdumpfile/libkdumpfile.la
-
-clearattr_SOURCES = clearattr.c
 clearattr_LDADD = \
 	$(LDADD) \
 	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+custom_meth_LDADD = \
+	$(top_builddir)/src/addrxlat/libaddrxlat.la
+elf_prstatus_mod_x86_64_LDADD = \
+	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+err_addrxlat_LDADD = \
+	$(top_builddir)/src/addrxlat/libaddrxlat.la
 
-custom_meth_LDADD = $(top_builddir)/src/addrxlat/libaddrxlat.la
-elf_prstatus_mod_x86_64_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-err_addrxlat_LDADD = $(top_builddir)/src/addrxlat/libaddrxlat.la
-
-mkdiskdump_SOURCES = mkdiskdump.c
 mkdiskdump_CFLAGS = \
 	$(ZLIB_CFLAGS) \
 	$(LZO_CFLAGS) \
@@ -68,44 +65,43 @@ mkdiskdump_LDADD = \
 	$(LZO_LIBS) \
 	$(SNAPPY_LIBS)
 
-mkelf_SOURCES = mkelf.c
-
-mklkcd_SOURCES = mklkcd.c
 mklkcd_CFLAGS = \
 	$(ZLIB_CFLAGS)
 mklkcd_LDADD = \
 	$(LDADD) \
 	$(ZLIB_LIBS)
 
-dumpdata_SOURCES = dumpdata.c
-dumpdata_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-
-multiread_SOURCES = multiread.c
-multiread_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-
-multixlat_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-nometh_LDADD = $(top_builddir)/src/addrxlat/libaddrxlat.la
-
-subattr_SOURCES = subattr.c
-subattr_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-
+dumpdata_LDADD = \
+	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+multiread_LDADD = \
+	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+multixlat_LDADD = \
+	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+nometh_LDADD = \
+	$(top_builddir)/src/addrxlat/libaddrxlat.la
+subattr_LDADD = \
+	$(top_builddir)/src/kdumpfile/libkdumpfile.la
 sys_xlat_LDADD = \
 	$(LDADD) \
+	$(top_builddir)/src/addrxlat/libaddrxlat.la
+thread_errstr_LDADD = \
 	$(top_builddir)/src/kdumpfile/libkdumpfile.la
-
-thread_errstr_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-typed_attr_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-vmci_cleanup_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-vmci_lines_post_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-vmci_post_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-vtop_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-xlatmap_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la -ldl
-xlatop_LDADD = $(top_builddir)/src/kdumpfile/libkdumpfile.la
-
-xlat_os_SOURCES = xlat-os.c
+typed_attr_LDADD = \
+	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+vmci_cleanup_LDADD = \
+	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+vmci_lines_post_LDADD = \
+	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+vmci_post_LDADD = \
+	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+xlatmap_LDADD = \
+	$(top_builddir)/src/addrxlat/libaddrxlat.la \
+	-ldl
+xlatop_LDADD = \
+	$(top_builddir)/src/addrxlat/libaddrxlat.la
 xlat_os_LDADD = \
 	$(LDADD) \
-	$(top_builddir)/src/kdumpfile/libkdumpfile.la
+	$(top_builddir)/src/addrxlat/libaddrxlat.la
 
 check_PROGRAMS = \
 	addrxlat \
@@ -130,7 +126,6 @@ check_PROGRAMS = \
 	vmci-cleanup \
 	vmci-lines-post \
 	vmci-post \
-	vtop \
 	xlatmap \
 	xlatop \
 	xlat-os
@@ -156,7 +151,8 @@ test_scripts = \
 	addrxlat-s390x-3l \
 	addrxlat-s390x-4l \
 	addrxlat-s390x-5l \
-	addrxlat-x86_64 \
+	addrxlat-x86_64-4l \
+	addrxlat-x86_64-5l \
 	addrxlat-invalid-pfn32 \
 	addrxlat-invalid-pfn64 \
 	addrxlat-invalid-ia32 \
@@ -262,6 +258,7 @@ test_scripts = \
 	xlat-linux-x86_64-2.6.31-nover-xen \
 	xlat-linux-x86_64-4.13-nover \
 	xlat-linux-x86_64-4.13-kaslr \
+	xlat-linux-x86_64-5l \
 	xlat-xen-ia32 \
 	xlat-xen-ia32-pae \
 	xlat-xen-x86_64-old \
@@ -410,6 +407,9 @@ dist_check_DATA = \
 	xlat-linux-x86_64-4.13-kaslr.data \
 	xlat-linux-x86_64-4.13-kaslr.expect \
 	xlat-linux-x86_64-4.13-kaslr.sym \
+	xlat-linux-x86_64-5l.data \
+	xlat-linux-x86_64-5l.expect \
+	xlat-linux-x86_64-5l.sym \
 	xlat-xen-ia32.data \
 	xlat-xen-ia32.expect \
 	xlat-xen-ia32-pae.data \

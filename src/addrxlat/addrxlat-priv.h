@@ -380,7 +380,7 @@ INTERNAL_DECL(addrxlat_status, highest_linear,
 
 /** All options recognized by @ref parse_opts. */
 enum optidx {
-	OPT_pae,		/**< [ia32] PAE state (boolean). */
+	OPT_levels,		/**< Number of page table levels. */
 	OPT_pagesize,		/**< Page size (number). */
 	OPT_phys_base,		/**< [x86-64] Linux physical base address. */
 	OPT_rootpgt,		/**< Root page table address. */
@@ -500,6 +500,13 @@ static inline void
 clear_error(addrxlat_ctx_t *ctx)
 {
 	err_clear(&ctx->err);
+}
+
+static inline addrxlat_status
+bad_paging_levels(addrxlat_ctx_t *ctx, long levels)
+{
+	return set_error(ctx, ADDRXLAT_ERR_NOTIMPL,
+			 "%ld-level paging not implemented", levels);
 }
 
 #endif	/* addrxlat-priv.h */
