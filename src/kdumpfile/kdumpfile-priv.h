@@ -209,6 +209,8 @@ struct format_ops {
 	void (*cleanup)(struct kdump_shared *);
 };
 
+INTERNAL_DECL(kdump_status, def_realloc_caches, (kdump_ctx_t *ctx));
+
 struct arch_ops {
 	/** Initialize any arch-specific data. */
 	kdump_status (*init)(kdump_ctx_t *);
@@ -1224,7 +1226,9 @@ INTERNAL_DECL(void, cache_put_entry,
 INTERNAL_DECL(void, cache_insert, (struct cache *, struct cache_entry *));
 INTERNAL_DECL(void, cache_discard, (struct cache *, struct cache_entry *));
 
-INTERNAL_DECL(kdump_status, def_realloc_caches, (kdump_ctx_t *ctx));
+INTERNAL_DECL(kdump_status, cache_set_attrs,
+	      (struct cache *cache, kdump_ctx_t *ctx,
+	       struct attr_data *hits, struct attr_data *misses));
 
 /**  Check if a cache entry is valid.
  *
