@@ -933,7 +933,6 @@ init_cpu_blob_attr(kdump_ctx_t *ctx, unsigned cpu,
 		   const void *data, size_t size,
 		   const struct attr_template *tmpl)
 {
-	void *buffer;
 	struct attr_data *dir, *attr;
 	kdump_attr_value_t val;
 	kdump_status status;
@@ -942,32 +941,22 @@ init_cpu_blob_attr(kdump_ctx_t *ctx, unsigned cpu,
 	if (status != KDUMP_OK)
 		return status;
 
-	buffer = malloc(size);
-	if (!buffer)
-		return set_error(ctx, KDUMP_ERR_SYSTEM,
-				 "Buffer allocation failed");
-	memcpy(buffer, data, size);
-
-	val.blob = kdump_blob_new(buffer, size);
-	if (!val.blob) {
-		free(buffer);
+	val.blob = internal_blob_new_dup(data, size);
+	if (!val.blob)
 		return set_error(ctx, KDUMP_ERR_SYSTEM,
 				 "Blob allocation failed");
-	}
 
 	attr = new_attr(ctx->dict, dir, tmpl);
 	if (!attr) {
-		kdump_blob_decref(val.blob);
+		internal_blob_decref(val.blob);
 		return set_error(ctx, status,
 				 "Attribute allocation failed");
 	}
 
 	status = set_attr(ctx, attr, ATTR_DEFAULT, &val);
-	if (status != KDUMP_OK) {
-		kdump_blob_decref(val.blob);
+	if (status != KDUMP_OK)
 		return set_error(ctx, status,
 				 "Cannot set attribute");
-	}
 
 	return status;
 }
@@ -1031,7 +1020,8 @@ get_attr_blob(kdump_ctx_t *ctx, struct attr_data *attr,
 
 	raw = lookup_attr_child(attr->parent, tmpl);
 	if (!raw)
-		return set_error(ctx, KDUMP_ERR_NODATA, "PRSTATUS not found");
+		return set_error(ctx, KDUMP_ERR_NODATA,
+				 "%s raw attribute not found", tmpl->key);
 
 	*blob = raw->val.blob;
 	return KDUMP_OK;

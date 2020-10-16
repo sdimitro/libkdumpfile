@@ -221,6 +221,15 @@ struct arch_ops {
 	/** Process a Xen .xen_prstatus section. */
 	kdump_status (*process_xen_prstatus)(kdump_ctx_t *, const void *, size_t);
 
+	/** OS type post-hook.
+	 * @param ctx  Dump file object.
+	 * @returns    Status code.
+	 *
+	 * This hook is called after the OS type is changed to allow
+	 * arch-specific initialization (e.g. read OS_INFO on s390x).
+	 */
+	kdump_status (*post_ostype)(kdump_ctx_t *ctx);
+
 	/** Address translation post-hook.
 	 * @param ctx  Dump file object.
 	 * @returns    Status code.
@@ -274,6 +283,9 @@ struct _kdump_bmp {
 	kdump_errmsg_t err;
 };
 
+DECLARE_ALIAS(bmp_incref);
+DECLARE_ALIAS(bmp_decref);
+
 INTERNAL_DECL(kdump_bmp_t *, kdump_bmp_new,
 	      (const struct kdump_bmp_ops *ops));
 
@@ -294,9 +306,10 @@ struct _kdump_blob {
 	size_t size;		/**< Size of binary data. */
 };
 
-INTERNAL_DECL(kdump_blob_t *, kdump_blob_new,
-	      (void *data, size_t size));
-
+DECLARE_ALIAS(blob_new);
+DECLARE_ALIAS(blob_new_dup);
+DECLARE_ALIAS(blob_incref);
+DECLARE_ALIAS(blob_decref);
 DECLARE_ALIAS(blob_pin);
 DECLARE_ALIAS(blob_unpin);
 
