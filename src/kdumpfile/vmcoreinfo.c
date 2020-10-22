@@ -260,7 +260,7 @@ const struct attr_ops vmcoreinfo_raw_ops = {
 };
 
 static kdump_status
-get_raw_locked(kdump_ctx_t *ctx, const char **raw)
+get_raw_locked(kdump_ctx_t *ctx, char **raw)
 {
 	static const struct ostype_attr_map raw_map[] = {
 		{ ADDRXLAT_OS_LINUX, GKI_linux_vmcoreinfo_raw },
@@ -268,6 +268,7 @@ get_raw_locked(kdump_ctx_t *ctx, const char **raw)
 		{ ADDRXLAT_OS_UNKNOWN }
 	};
 	struct attr_data *attr = ostype_attr(ctx, raw_map);
+	size_t len;
 	kdump_status status;
 
 	if (!attr)
@@ -282,12 +283,19 @@ get_raw_locked(kdump_ctx_t *ctx, const char **raw)
 		return set_error(ctx, status,
 				 "Value cannot be revalidated");
 
-	*raw = attr_value(attr)->string;
+	len = attr_value(attr)->blob->size;
+	*raw = malloc(len + 1);
+	if (!*raw)
+		return set_error(ctx, KDUMP_ERR_SYSTEM,
+				 "Cannot allocate raw attribute value");
+	memcpy(*raw, attr_value(attr)->blob->data, len);
+	(*raw)[len] = 0;
+
 	return KDUMP_OK;
 }
 
 kdump_status
-kdump_vmcoreinfo_raw(kdump_ctx_t *ctx, const char **raw)
+kdump_vmcoreinfo_raw(kdump_ctx_t *ctx, char **raw)
 {
 	kdump_status ret;
 
@@ -331,13 +339,17 @@ get_line_locked(kdump_ctx_t *ctx, const char *key,
 		return set_error(ctx, status,
 				 "Value cannot be revalidated");
 
-	*val = attr_value(attr)->string;
+	*val = strdup(attr_value(attr)->string);
+	if (!*val)
+		return set_error(ctx, KDUMP_ERR_SYSTEM,
+				 "Cannot allocate attribute value");
+
 	return KDUMP_OK;
 }
 
 kdump_status
 kdump_vmcoreinfo_line(kdump_ctx_t *ctx, const char *key,
-		      const char **val)
+		      char **val)
 {
 	kdump_status ret;
 
